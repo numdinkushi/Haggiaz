@@ -7,6 +7,7 @@ pragma solidity ^0.8.24;
  */
 interface IHaggiazRegistry {
     function createGroup(
+        string calldata name,
         address token,
         uint256 contributionAmount,
         uint256 maxMembers,

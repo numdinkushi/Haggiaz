@@ -39,6 +39,7 @@ describe("Haggiaz", function () {
   it("creates a group", async function () {
     await expect(
       haggiaz.createGroup(
+        "Test Group",
         await token.getAddress(),
         CONTRIBUTION,
         MAX_MEMBERS,
@@ -59,6 +60,7 @@ describe("Haggiaz", function () {
 
     await expect(
       haggiaz.createGroup(
+        "Short Round Group",
         await token.getAddress(),
         CONTRIBUTION,
         MAX_MEMBERS,
@@ -71,7 +73,7 @@ describe("Haggiaz", function () {
     await expect(haggiaz.pause()).to.not.be.reverted;
     expect(await haggiaz.paused()).to.be.true;
     await expect(
-      haggiaz.createGroup(await token.getAddress(), CONTRIBUTION, MAX_MEMBERS, ROUND_DURATION)
+      haggiaz.createGroup("Paused Group", await token.getAddress(), CONTRIBUTION, MAX_MEMBERS, ROUND_DURATION)
     ).to.be.reverted;
     await expect(haggiaz.unpause()).to.not.be.reverted;
     expect(await haggiaz.paused()).to.be.false;
@@ -79,14 +81,15 @@ describe("Haggiaz", function () {
 
   it("rejects EOA as token (must be contract)", async function () {
     await expect(
-      haggiaz.createGroup(alice.address, CONTRIBUTION, MAX_MEMBERS, ROUND_DURATION)
+      haggiaz.createGroup("Bad Token Group", alice.address, CONTRIBUTION, MAX_MEMBERS, ROUND_DURATION)
     ).to.be.revertedWithCustomError(haggiaz, "TokenMustBeContract");
   });
 
   it("invite-only group requires joinWithSignature", async function () {
-    const createGroupInviteOnly = haggiaz.getFunction("createGroup(address,uint256,uint256,uint256,bool)");
+    const createGroupInviteOnly = haggiaz.getFunction("createGroup(string,address,uint256,uint256,uint256,bool)");
     await expect(
       createGroupInviteOnly(
+        "Invite Only Group",
         await token.getAddress(),
         CONTRIBUTION,
         MAX_MEMBERS,
@@ -107,9 +110,10 @@ describe("Haggiaz", function () {
   });
 
   it("joinWithSignature works with valid creator signature", async function () {
-    const createGroupInviteOnly = haggiaz.getFunction("createGroup(address,uint256,uint256,uint256,bool)");
+    const createGroupInviteOnly = haggiaz.getFunction("createGroup(string,address,uint256,uint256,uint256,bool)");
     await expect(
       createGroupInviteOnly(
+        "Invite Sig Group",
         await token.getAddress(),
         CONTRIBUTION,
         MAX_MEMBERS,
@@ -167,6 +171,7 @@ describe("Haggiaz", function () {
     await token.connect(bob).approve(treasuryAddr, approveAmount);
 
     const tx = await haggiaz.createGroup(
+      "Full Flow Group",
       await token.getAddress(),
       CONTRIBUTION,
       MAX_MEMBERS,

@@ -7,6 +7,7 @@ pragma solidity ^0.8.24;
  */
 interface IHaggiazGroup {
     struct GroupConfig {
+        string name;
         address creator;
         address token;
         uint256 contributionAmount;

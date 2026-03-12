@@ -9,15 +9,15 @@ description: Interact with Haggiaz ROSCA/Chama protocol on Celo. Create groups, 
 
 | Contract | Address |
 |----------|---------|
-| Haggiaz | `0x2d40e88e54A27F0Cb9800654340d6aAD1422da96` |
-| HaggiazTreasury | `0xbc70035d7F99D21A373eC7ebe69A1Cdb17A71bFb` |
+| Haggiaz | `0xAfc6C1A51A873cE884a5c5D734620F574146084a` |
+| HaggiazTreasury | `0x04d0a0f907D3844AbDA16d9632C5fE900D8ca287` |
 | USDm / cUSD (Mento Dollar) | `0x765DE816845861e75A25fCA122bb6898B8B1282a` |
 
 Load from `haggiaz/addresses.json` or `.env` if custom.
 
 ## Flow Overview
 
-1. **Create group** → creator calls `createGroup(token, contributionAmount, maxMembers, roundDurationSeconds)`
+1. **Create group** → creator calls `createGroup(name, token, contributionAmount, maxMembers, roundDurationSeconds)`
 2. **Join** → members call `join(groupId)` or `joinWithSignature(...)` for invite-only
 3. **Start** → creator calls `startGroup(groupId)` when members are in
 4. **Contribute** → each member calls `contribute(groupId)` each round (must approve token first)
@@ -29,10 +29,11 @@ Join order = receive order (member at index r−1 receives in round r).
 
 ### createGroup
 ```solidity
-createGroup(address token, uint256 contributionAmount, uint256 maxMembers, uint256 roundDurationSeconds)
+createGroup(string name, address token, uint256 contributionAmount, uint256 maxMembers, uint256 roundDurationSeconds)
 // or invite-only:
-createGroup(token, contributionAmount, maxMembers, roundDurationSeconds, true)
+createGroup(name, token, contributionAmount, maxMembers, roundDurationSeconds, true)
 ```
+- `name`: human-readable group name (1–64 chars)
 - `token`: ERC20 (USDm, cUSD)
 - `contributionAmount`: in token decimals (e.g. 10e6 = 10 USD)
 - `roundDurationSeconds`: min 1 day (86400) on mainnet unless owner relaxed limits
@@ -105,7 +106,7 @@ Use Hardhat scripts or ethers/viem. Example (ethers v6):
 
 ```javascript
 const haggiaz = new ethers.Contract(HAGGAZ_ADDRESS, HaggiazABI, signer);
-const tx = await haggiaz.createGroup(USDM, ethers.parseUnits("10", 6), 5, 86400);
+const tx = await haggiaz.createGroup("Family Chama", USDM, ethers.parseUnits("10", 6), 5, 86400);
 const receipt = await tx.wait();
 const event = receipt.logs.find(l => l.fragment?.name === "GroupCreated");
 const groupId = event?.args?.[0];

@@ -4,8 +4,8 @@
     "treasury": ""
   },
   "celoMainnet": {
-    "haggiaz": "0x2d40e88e54A27F0Cb9800654340d6aAD1422da96",
-    "treasury": "0xbc70035d7F99D21A373eC7ebe69A1Cdb17A71bFb"
+    "haggiaz": "0xAfc6C1A51A873cE884a5c5D734620F574146084a",
+    "treasury": "0x04d0a0f907D3844AbDA16d9632C5fE900D8ca287"
   },
   "tokens": {
     "celoTestnet": {
