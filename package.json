@@ -1,0 +1,20 @@
+{
+  "name": "haggiaz-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Haggiaz — ROSCA/Chama savings groups on Celo. SOLID, modular, production-ready.",
+  "scripts": {
+    "compile": "hardhat compile",
+    "build": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:testnet": "hardhat run scripts/deploy.ts --network celoTestnet",
+    "deploy:mainnet": "hardhat run scripts/deploy.ts --network celoMainnet"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "@openzeppelin/contracts": "^5.0.2",
+    "dotenv": "^16.6.1",
+    "hardhat": "^2.22.0",
+    "typescript": "^5.0.0"
+  }
+}

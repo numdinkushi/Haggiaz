@@ -1,0 +1,8 @@
+{
+  "celoTestnet": { "haggiaz": "", "treasury": "" },
+  "celoMainnet": { "haggiaz": "", "treasury": "" },
+  "tokens": {
+    "celoTestnet": { "usdm": "set via USDM_ALFAJORES in .env" },
+    "celoMainnet": { "usdm": "set via USDM_MAINNET in .env" }
+  }
+}

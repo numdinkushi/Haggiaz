@@ -1,0 +1,18 @@
+{
+  "celoTestnet": {
+    "haggiaz": "",
+    "treasury": ""
+  },
+  "celoMainnet": {
+    "haggiaz": "0x2d40e88e54A27F0Cb9800654340d6aAD1422da96",
+    "treasury": "0xbc70035d7F99D21A373eC7ebe69A1Cdb17A71bFb"
+  },
+  "tokens": {
+    "celoTestnet": {
+      "usdm": "0xdE9e4C3ce781b4bA68120d6261cbad65ce0aB00b"
+    },
+    "celoMainnet": {
+      "usdm": "0x765DE816845861e75A25fCA122bb6898B8B1282a"
+    }
+  }
+}
