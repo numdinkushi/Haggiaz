@@ -5,22 +5,22 @@ How to call Haggiaz from an AI agent or external system (e.g. Synthesis hackatho
 ## Quick Reference
 
 - **Network**: Celo mainnet (chainId 42220)
-- **Haggiaz**: `0x2d40e88e54A27F0Cb9800654340d6aAD1422da96`
-- **Treasury**: `0xbc70035d7F99D21A373eC7ebe69A1Cdb17A71bFb`
+- **Haggiaz**: `0xAfc6C1A51A873cE884a5c5D734620F574146084a`
+- **Treasury**: `0x04d0a0f907D3844AbDA16d9632C5fE900D8ca287`
 - **USDm**: `0x765DE816845861e75A25fCA122bb6898B8B1282a`
 
 ## Minimal ABI (for agent tooling)
 
 ```json
 [
-  "function createGroup(address,uint256,uint256,uint256) returns (bytes32)",
-  "function createGroup(address,uint256,uint256,uint256,bool) returns (bytes32)",
+  "function createGroup(string,address,uint256,uint256,uint256) returns (bytes32)",
+  "function createGroup(string,address,uint256,uint256,uint256,bool) returns (bytes32)",
   "function join(bytes32)",
   "function joinWithSignature(bytes32,uint256,uint256,uint8,bytes32,bytes32)",
   "function startGroup(bytes32)",
   "function contribute(bytes32)",
   "function disburse(bytes32)",
-  "function getConfig(bytes32) view returns ((address,address,uint256,uint256,uint256))",
+  "function getConfig(bytes32) view returns ((string,address,address,uint256,uint256,uint256))",
   "function getStatus(bytes32) view returns (uint8)",
   "function getMembers(bytes32) view returns (address[])",
   "function getCurrentRound(bytes32) view returns (uint256)",
@@ -36,7 +36,7 @@ How to call Haggiaz from an AI agent or external system (e.g. Synthesis hackatho
 
 | User intent | Action | Notes |
 |-------------|--------|-------|
-| "Create a savings group" | `createGroup(token, amount, maxMembers, roundDuration)` | Use USDm, parse amount (e.g. 10 → 10e6) |
+| "Create a savings group" | `createGroup(name, token, amount, maxMembers, roundDuration)` | Name 1–64 chars; use USDm, parse amount (e.g. 10 → 10e6) |
 | "Join group X" | `join(groupId)` or `joinWithSignature(...)` | Check `inviteOnly(groupId)` first |
 | "Start the group" | `startGroup(groupId)` | Creator only |
 | "Contribute to my group" | `contribute(groupId)` | Approve Treasury first |
@@ -47,7 +47,7 @@ How to call Haggiaz from an AI agent or external system (e.g. Synthesis hackatho
 
 ## Invite-Only Flow (joinWithSignature)
 
-1. Creator creates group with `createGroup(..., true)` (last arg = inviteOnly).
+1. Creator creates group with `createGroup(name, ..., true)` (last arg = inviteOnly).
 2. Creator signs EIP-712:
    - Domain: name `Haggiaz`, version `1`, chainId 42220, contract address
    - Type: `JoinInvite(bytes32 groupId,address member,uint256 nonce,uint256 deadline)`

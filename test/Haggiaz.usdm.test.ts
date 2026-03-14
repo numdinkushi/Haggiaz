@@ -58,7 +58,7 @@ describe("Haggiaz (USDm on Alfajores fork)", function () {
     await usdm.connect(alice).approve(await treasury.getAddress(), ethers.MaxUint256);
     await usdm.connect(bob).approve(await treasury.getAddress(), ethers.MaxUint256);
 
-    const tx = await haggiaz.createGroup(USDM_ALFAJORES, CONTRIBUTION, 3, 600);
+    const tx = await haggiaz.createGroup("USDm Chama", USDM_ALFAJORES, CONTRIBUTION, 3, 600);
     const receipt = await tx.wait();
     const createdEvent = receipt?.logs
       ?.map((l: any) => {

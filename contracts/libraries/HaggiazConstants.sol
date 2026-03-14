@@ -11,4 +11,5 @@ library HaggiazConstants {
     uint256 internal constant MAX_MEMBERS = 100;
     uint256 internal constant MIN_ROUND_DURATION = 1 days;
     uint256 internal constant MAX_ROUND_DURATION = 365 days;
+    uint256 internal constant MAX_GROUP_NAME_LENGTH = 64;
 }

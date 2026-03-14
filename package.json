@@ -4,6 +4,7 @@
   "private": true,
   "description": "Haggiaz — ROSCA/Chama savings groups on Celo. SOLID, modular, production-ready.",
   "scripts": {
+    "register:8004": "node scripts/register-erc8004.mjs",
     "compile": "hardhat compile",
     "build": "hardhat compile",
     "test": "hardhat test",
@@ -15,6 +16,10 @@
     "@openzeppelin/contracts": "^5.0.2",
     "dotenv": "^16.6.1",
     "hardhat": "^2.22.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "viem": "^2.47.2"
+  },
+  "dependencies": {
+    "cloudinary": "^2.9.0"
   }
 }

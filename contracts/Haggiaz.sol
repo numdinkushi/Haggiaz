@@ -42,7 +42,7 @@ contract Haggiaz is IHaggiazRegistry, ReentrancyGuard, Pausable, EIP712 {
         mapping(uint256 => address) recipientByRound;
     }
 
-    event GroupCreated(bytes32 indexed groupId, address indexed creator, address token, uint256 contributionAmount, uint256 maxMembers);
+    event GroupCreated(bytes32 indexed groupId, string name, address indexed creator, address token, uint256 contributionAmount, uint256 maxMembers);
     event MemberJoined(bytes32 indexed groupId, address indexed member);
     event RoundStarted(bytes32 indexed groupId, uint256 roundIndex);
     event Contribution(bytes32 indexed groupId, address indexed member, uint256 roundIndex, uint256 amount);
@@ -83,31 +83,36 @@ contract Haggiaz is IHaggiazRegistry, ReentrancyGuard, Pausable, EIP712 {
     // ─────────────────────────────────────────────────────────────────────────────
 
     function createGroup(
+        string calldata name,
         address token,
         uint256 contributionAmount,
         uint256 maxMembers,
         uint256 roundDurationSeconds
     ) external override whenNotPaused returns (bytes32 groupId) {
-        return _createGroup(token, contributionAmount, maxMembers, roundDurationSeconds, false);
+        return _createGroup(name, token, contributionAmount, maxMembers, roundDurationSeconds, false);
     }
 
     function createGroup(
+        string calldata name,
         address token,
         uint256 contributionAmount,
         uint256 maxMembers,
         uint256 roundDurationSeconds,
         bool _inviteOnly
     ) external whenNotPaused returns (bytes32 groupId) {
-        return _createGroup(token, contributionAmount, maxMembers, roundDurationSeconds, _inviteOnly);
+        return _createGroup(name, token, contributionAmount, maxMembers, roundDurationSeconds, _inviteOnly);
     }
 
     function _createGroup(
+        string calldata name,
         address token,
         uint256 contributionAmount,
         uint256 maxMembers,
         uint256 roundDurationSeconds,
         bool _inviteOnly
     ) internal returns (bytes32 groupId) {
+        if (bytes(name).length == 0) revert HaggiazErrors.InvalidInput();
+        if (bytes(name).length > HaggiazConstants.MAX_GROUP_NAME_LENGTH) revert HaggiazErrors.InvalidInput();
         if (token == address(0)) revert HaggiazErrors.InvalidInput();
         if (token.code.length == 0) revert HaggiazErrors.TokenMustBeContract();
         if (contributionAmount < HaggiazConstants.MIN_CONTRIBUTION) revert HaggiazErrors.InvalidInput();
@@ -121,6 +126,7 @@ contract Haggiaz is IHaggiazRegistry, ReentrancyGuard, Pausable, EIP712 {
         if (g.config.creator != address(0)) revert HaggiazErrors.GroupAlreadyExists();
 
         g.config = IHaggiazGroup.GroupConfig({
+            name: name,
             creator: msg.sender,
             token: token,
             contributionAmount: contributionAmount,
@@ -133,7 +139,7 @@ contract Haggiaz is IHaggiazRegistry, ReentrancyGuard, Pausable, EIP712 {
         g.roundStartTime = 0;
         inviteOnly[groupId] = _inviteOnly;
 
-        emit GroupCreated(groupId, msg.sender, token, contributionAmount, maxMembers);
+        emit GroupCreated(groupId, name, msg.sender, token, contributionAmount, maxMembers);
     }
 
     function getGroup(bytes32 groupId) external view override returns (address) {
