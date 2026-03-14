@@ -12,11 +12,14 @@
     "deploy:mainnet": "hardhat run scripts/deploy.ts --network celoMainnet"
   },
   "devDependencies": {
-    "viem": "^2.47.2",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@openzeppelin/contracts": "^5.0.2",
     "dotenv": "^16.6.1",
     "hardhat": "^2.22.0",
-    "typescript": "^5.0.0"
+    "typescript": "^5.0.0",
+    "viem": "^2.47.2"
+  },
+  "dependencies": {
+    "cloudinary": "^2.9.0"
   }
 }

@@ -23,3 +23,17 @@ export function formatGroupId(groupId: string): string {
   if (!groupId || groupId.length < 18) return groupId;
   return `${groupId.slice(0, 10)}...${groupId.slice(-8)}`;
 }
+
+/** Display name from profile (firstName + lastName, or displayName), or fallback to formatted address. */
+export function formatProfileDisplayName(
+  profile: { firstName?: string; lastName?: string; displayName?: string } | null | undefined,
+  addressFallback: string
+): string {
+  if (!profile) return formatAddress(addressFallback);
+  const first = (profile.firstName ?? "").trim();
+  const last = (profile.lastName ?? "").trim();
+  const full = [first, last].filter(Boolean).join(" ");
+  if (full) return full;
+  if ((profile.displayName ?? "").trim()) return profile.displayName!.trim();
+  return formatAddress(addressFallback);
+}

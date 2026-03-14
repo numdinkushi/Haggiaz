@@ -1,55 +1,46 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 
 const STORAGE_KEY = "haggiaz-localhost-wallet-hint-dismissed";
 
+const LOCALHOST_MESSAGE = "Using Rainbow? To avoid extension errors on localhost:";
+const LOCALHOST_DESCRIPTION =
+  'Chrome → Extensions → Rainbow → Details → Site access → set to "On specific sites" and remove localhost (or choose "On click"). Use Valora, MetaMask, or WalletConnect in the app instead.';
+
+/**
+ * Shows a one-time toast on localhost with wallet/Rainbow hint.
+ * No fixed banner — uses shadcn Sonner so it doesn’t clash with the navbar.
+ */
 export function LocalhostWalletHint() {
-  const [show, setShow] = useState(false);
+  const hasShown = useRef(false);
 
   useEffect(() => {
+    if (hasShown.current) return;
     const isLocalhost =
       typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
-    const wasDismissed = typeof window !== "undefined" && window.localStorage.getItem(STORAGE_KEY);
-    setShow(!!isLocalhost && !wasDismissed);
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1");
+    const wasDismissed =
+      typeof window !== "undefined" && window.localStorage.getItem(STORAGE_KEY);
+
+    if (!isLocalhost || wasDismissed) return;
+
+    hasShown.current = true;
+    toast.warning(LOCALHOST_MESSAGE, {
+      description: LOCALHOST_DESCRIPTION,
+      duration: 10000,
+      action: {
+        label: "Dismiss",
+        onClick: () => {
+          if (typeof window !== "undefined") {
+            window.localStorage.setItem(STORAGE_KEY, "1");
+          }
+        },
+      },
+    });
   }, []);
 
-  const handleDismiss = () => {
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(STORAGE_KEY, "1");
-      setShow(false);
-    }
-  };
-
-  if (!show) return null;
-
-  return (
-    <Alert className="rounded-none border-x-0 border-t-0 border-b bg-muted/50 py-2">
-      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6">
-        <div>
-          <AlertTitle className="text-xs font-medium sm:text-sm">
-            Using Rainbow? To avoid extension errors on localhost:
-          </AlertTitle>
-          <AlertDescription className="mt-0.5 text-xs text-muted-foreground sm:text-sm">
-            Chrome → Extensions → Rainbow → Details → Site access → set to &quot;On specific
-            sites&quot; and remove localhost (or choose &quot;On click&quot;). Use Valora,
-            MetaMask, or WalletConnect in the app instead.
-          </AlertDescription>
-        </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="shrink-0"
-          onClick={handleDismiss}
-          aria-label="Dismiss"
-        >
-          <X className="h-4 w-4" />
-        </Button>
-      </div>
-    </Alert>
-  );
+  return null;
 }

@@ -34,6 +34,8 @@ export default defineSchema({
   users: defineTable({
     address: v.string(),
     displayName: v.optional(v.string()),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
     avatarUrl: v.optional(v.string()),
     ensName: v.optional(v.string()),
     bio: v.optional(v.string()),

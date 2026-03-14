@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { motion } from "framer-motion";
 import { useWriteContract } from "wagmi";
@@ -12,7 +12,7 @@ import { CONFIG } from "@/lib/config";
 import { ERC20_ABI } from "@/lib/abi/erc20";
 import { useGroupConfig, useGroupStatus, useGroupMembers, useCurrentRound, useRecipientForRound, useHasContributed, useContribute, useDisburse, useStartGroup } from "@/hooks/use-haggiaz";
 import { GroupStatus } from "@/lib/enums";
-import { formatAmount, formatAddress } from "@/lib/format";
+import { formatAmount, formatAddress, formatProfileDisplayName } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -21,14 +21,43 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ROUTES, ANIMATION } from "@/lib/constants";
+import { toast } from "sonner";
 
 function useGroupId(): `0x${string}` | undefined {
   const params = useParams();
   const id = params.groupId as string;
   if (!id || !id.startsWith("0x") || id.length !== 66) return undefined;
   return id as `0x${string}`;
+}
+
+function MemberRow({
+  address,
+  profile,
+  isYou,
+}: {
+  address: string;
+  profile?: { avatarUrl?: string; firstName?: string; lastName?: string; displayName?: string };
+  isYou: boolean;
+}) {
+  const displayName = formatProfileDisplayName(profile, address);
+  const initials = displayName.slice(0, 2).toUpperCase();
+  return (
+    <div className="flex items-center gap-2">
+      <Avatar size="sm" className="size-8 shrink-0">
+        {profile?.avatarUrl ? (
+          <AvatarImage src={profile.avatarUrl} alt={displayName} />
+        ) : null}
+        <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+      </Avatar>
+      <span className={`font-mono text-sm ${isYou ? "text-primary font-medium" : "text-muted-foreground"}`}>
+        {displayName}
+        {isYou && <span className="ml-2 text-xs text-primary">(you)</span>}
+      </span>
+    </div>
+  );
 }
 
 export default function GroupDetailPage() {
@@ -43,15 +72,24 @@ export default function GroupDetailPage() {
   const { data: recipient } = useRecipientForRound(groupId, currentRound ?? 0);
   const { data: hasContributed } = useHasContributed(groupId, address, currentRound ?? 0);
 
-  const { contribute, isPending: contributePending } = useContribute();
-  const { disburse, isPending: disbursePending } = useDisburse();
-  const { start, isPending: startPending } = useStartGroup();
+  const { contribute, isPending: contributePending, isSuccess: contributeSuccess, error: contributeError } = useContribute();
+  const { disburse, isPending: disbursePending, isSuccess: disburseSuccess, error: disburseError } = useDisburse();
+  const { start, isPending: startPending, isSuccess: startSuccess, error: startError } = useStartGroup();
 
   const upsertGroup = useMutation(api.groups.upsert);
   const upsertMembership = useMutation(api.memberships.upsert);
   const membersSyncedRef = useRef(false);
 
-  // Map chain status to Convex status string
+  const memberAddresses = config && members ? [config.creator, ...members] : [];
+  const profiles = useQuery(
+    api.users.getMany,
+    memberAddresses.length > 0 ? { addresses: memberAddresses } : "skip"
+  );
+  const profileByAddress = new Map(
+    (profiles ?? []).map((p) => [p.address.toLowerCase(), p])
+  );
+
+  // Map chain status to Convex status string to Convex status string
   const statusStr = (n: number | undefined): "open" | "active" | "completed" | "cancelled" => {
     if (n === GroupStatus.Open) return "open";
     if (n === GroupStatus.Active) return "active";
@@ -91,6 +129,26 @@ export default function GroupDetailPage() {
     });
   }, [groupId, members, upsertMembership]);
 
+  // Toasts for contract actions
+  useEffect(() => {
+    if (startSuccess) toast.success("Group started", { description: "The group is now active." });
+  }, [startSuccess]);
+  useEffect(() => {
+    if (startError) toast.error("Couldn’t start group", { description: startError.message });
+  }, [startError]);
+  useEffect(() => {
+    if (contributeSuccess) toast.success("Contribution recorded", { description: "You’re in for this round." });
+  }, [contributeSuccess]);
+  useEffect(() => {
+    if (contributeError) toast.error("Contribution failed", { description: contributeError.message });
+  }, [contributeError]);
+  useEffect(() => {
+    if (disburseSuccess) toast.success("Pot claimed", { description: "Funds have been sent to your wallet." });
+  }, [disburseSuccess]);
+  useEffect(() => {
+    if (disburseError) toast.error("Claim failed", { description: disburseError.message });
+  }, [disburseError]);
+
   const isLoading = configLoading || statusLoading;
   const isCreator = address && config && config.creator.toLowerCase() === address.toLowerCase();
   const isMember = address && members?.some((m) => m.toLowerCase() === address.toLowerCase());
@@ -102,11 +160,19 @@ export default function GroupDetailPage() {
   const canJoin = statusNum === GroupStatus.Open && isConnected && !isMember && groupId;
   const showInviteLink = statusNum === GroupStatus.Open && isCreator;
 
-  const copyInviteLink = () => {
+  const copyInviteLink = async () => {
     if (!groupId) return;
     const url = `${window.location.origin}${ROUTES.JOIN(groupId)}`;
-    void navigator.clipboard.writeText(url);
-    // Could add toast; for now user can see the link
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Invite link copied", {
+        description: "Share it so others can join the group.",
+      });
+    } catch {
+      toast.error("Couldn’t copy link", {
+        description: "Try selecting and copying the link manually.",
+      });
+    }
   };
 
   const handleApprove = () => {
@@ -172,26 +238,27 @@ export default function GroupDetailPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div>
-              <p className="text-sm text-muted-foreground">Creator</p>
-              <p className="font-mono text-sm">{formatAddress(creator)}</p>
+              <p className="text-sm text-muted-foreground mb-1.5">Creator</p>
+              <MemberRow
+                address={creator}
+                profile={profileByAddress.get(creator.toLowerCase())}
+                isYou={address?.toLowerCase() === creator.toLowerCase()}
+              />
             </div>
 
             {members && members.length > 0 && (
               <div>
                 <p className="text-sm text-muted-foreground mb-2">Members</p>
-                <ul className="space-y-1.5">
-                  {members.map((memberAddr) => {
-                    const isYou = address && memberAddr.toLowerCase() === address.toLowerCase();
-                    return (
-                      <li
-                        key={memberAddr}
-                        className={`font-mono text-sm ${isYou ? "text-primary font-medium" : "text-muted-foreground"}`}
-                      >
-                        {formatAddress(memberAddr)}
-                        {isYou && <span className="ml-2 text-xs text-primary">(you)</span>}
-                      </li>
-                    );
-                  })}
+                <ul className="space-y-2">
+                  {members.map((memberAddr) => (
+                    <li key={memberAddr}>
+                      <MemberRow
+                        address={memberAddr}
+                        profile={profileByAddress.get(memberAddr.toLowerCase())}
+                        isYou={address?.toLowerCase() === memberAddr.toLowerCase()}
+                      />
+                    </li>
+                  ))}
                 </ul>
               </div>
             )}
@@ -220,7 +287,7 @@ export default function GroupDetailPage() {
             {showInviteLink && (
               <div className="rounded-lg border border-border bg-muted/30 p-3">
                 <p className="text-sm text-muted-foreground mb-2">Share this link so others can join (group must stay Open).</p>
-                <Button variant="outline" size="sm" onClick={copyInviteLink}>
+                <Button variant="outline" size="sm" className="cursor-pointer" onClick={copyInviteLink}>
                   Copy invite link
                 </Button>
               </div>

@@ -7,6 +7,7 @@ import { ConvexClientProvider } from "@/app/ConvexClientProvider";
 import { Header } from "@/components/layout/header";
 import { LocalhostWalletHint } from "@/components/layout/localhost-wallet-hint";
 import { SyncUserOnConnect } from "@/components/sync-user-on-connect";
+import { Toaster } from "@/components/ui/sonner";
 import { cn } from "@/lib/utils";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
@@ -34,6 +35,7 @@ export default function RootLayout({
               <Header />
               <LocalhostWalletHint />
               {children}
+              <Toaster position="top-center" richColors closeButton />
             </RainbowProvider>
           </ConvexClientProvider>
         </ThemeProvider>

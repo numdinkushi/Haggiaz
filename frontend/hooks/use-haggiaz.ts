@@ -100,7 +100,7 @@ export function useCreateGroup() {
         BigInt(params.maxMembers),
         BigInt(params.roundDurationSeconds),
       ],
-      gas: 400_000n, // cap so wallet doesn't over-estimate; createGroup typically ~250k
+      gas: BigInt(400_000), // cap so wallet doesn't over-estimate; createGroup typically ~250k
     });
   };
 
