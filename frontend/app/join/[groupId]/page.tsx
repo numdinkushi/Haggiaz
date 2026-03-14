@@ -2,7 +2,10 @@
 
 import { useParams } from "next/navigation";
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { motion } from "framer-motion";
 import { useGroupConfig, useGroupStatus, useGroupExists, useJoinGroup } from "@/hooks/use-haggiaz";
 import { GroupStatus } from "@/lib/enums";
@@ -26,7 +29,23 @@ export default function JoinPage() {
   const { data: exists } = useGroupExists(groupId);
   const { data: config, isLoading: configLoading } = useGroupConfig(groupId);
   const { data: status } = useGroupStatus(groupId);
-  const { join, isPending } = useJoinGroup();
+  const { join, isPending, isSuccess } = useJoinGroup();
+  const incrementMemberCount = useMutation(api.groups.incrementMemberCount);
+  const upsertMembership = useMutation(api.memberships.upsert);
+  const syncedRef = useRef(false);
+
+  // Keep Convex in sync when someone joins: update group member count + add membership
+  useEffect(() => {
+    if (!groupId || !address || !isSuccess || syncedRef.current) return;
+    syncedRef.current = true;
+    incrementMemberCount({ groupId }).catch(() => {});
+    upsertMembership({
+      groupId,
+      memberAddress: address,
+      joinedAt: Date.now(),
+      hasReceived: false,
+    }).catch(() => {});
+  }, [groupId, address, isSuccess, incrementMemberCount, upsertMembership]);
 
   if (!groupId) {
     return (
@@ -61,7 +80,7 @@ export default function JoinPage() {
           <CardHeader>
             <CardTitle>Join {name || "group"}</CardTitle>
             <CardDescription>
-              {formatAmount(contributionAmount)} USDm per round · {Number(maxMembers)} members max
+              {formatAmount(contributionAmount)} USDC per round · {Number(maxMembers)} members max
             </CardDescription>
             <Badge variant="secondary" className="mt-2 w-fit">
               {isOpen ? "Open" : "Not accepting members"}

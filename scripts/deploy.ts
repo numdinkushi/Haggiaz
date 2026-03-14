@@ -34,8 +34,8 @@ async function main() {
       celoTestnet: { haggiaz: "", treasury: "" },
       celoMainnet: { haggiaz: "", treasury: "" },
       tokens: {
-        celoTestnet: { usdm: TOKEN_ADDRESSES.celoTestnet.usdm },
-        celoMainnet: { usdm: TOKEN_ADDRESSES.celoMainnet.usdm },
+        celoTestnet: { usdc: TOKEN_ADDRESSES.celoTestnet.usdc },
+        celoMainnet: { usdc: TOKEN_ADDRESSES.celoMainnet.usdc },
       },
     };
   }

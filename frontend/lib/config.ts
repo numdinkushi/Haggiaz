@@ -1,14 +1,20 @@
 /**
  * Contract addresses and chain config. Source from addresses.json.
+ * Set NEXT_PUBLIC_USE_TESTNET=true to use Celo Alfajores (free faucet CELO).
  */
 
 import addresses from "../../addresses.json";
 
+const useTestnet = process.env.NEXT_PUBLIC_USE_TESTNET === "true";
+const network = useTestnet ? addresses.celoTestnet : addresses.celoMainnet;
+const tokens = useTestnet ? addresses.tokens.celoTestnet : addresses.tokens.celoMainnet;
+
 export const CONFIG = {
-  chain: "celoMainnet" as const,
-  haggiaz: addresses.celoMainnet.haggiaz as `0x${string}`,
-  treasury: addresses.celoMainnet.treasury as `0x${string}`,
-  usdm: addresses.tokens.celoMainnet.usdm as `0x${string}`,
+  chain: useTestnet ? ("celoTestnet" as const) : ("celoMainnet" as const),
+  haggiaz: network.haggiaz as `0x${string}`,
+  treasury: network.treasury as `0x${string}`,
+  usdc: tokens.usdc as `0x${string}`,
 } as const;
 
-export const CHAIN_ID = 42220; // Celo mainnet
+export const CHAIN_ID = useTestnet ? 44787 : 42220; // Alfajores : Celo mainnet
+export const IS_TESTNET = useTestnet;

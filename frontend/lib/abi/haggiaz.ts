@@ -128,4 +128,16 @@ export const HAGGAZ_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    type: "event",
+    name: "GroupCreated",
+    inputs: [
+      { name: "groupId", type: "bytes32", indexed: true },
+      { name: "name", type: "string", indexed: false },
+      { name: "creator", type: "address", indexed: true },
+      { name: "token", type: "address", indexed: false },
+      { name: "contributionAmount", type: "uint256", indexed: false },
+      { name: "maxMembers", type: "uint256", indexed: false },
+    ],
+  },
 ] as const satisfies Abi;

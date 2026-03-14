@@ -1,12 +1,16 @@
 "use client";
 
 import { useParams } from "next/navigation";
+import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { useAccount } from "wagmi";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 import { motion } from "framer-motion";
 import { useWriteContract } from "wagmi";
 import { CONFIG } from "@/lib/config";
 import { ERC20_ABI } from "@/lib/abi/erc20";
-import { useGroupConfig, useGroupStatus, useCurrentRound, useRecipientForRound, useHasContributed, useContribute, useDisburse, useStartGroup } from "@/hooks/use-haggiaz";
+import { useGroupConfig, useGroupStatus, useGroupMembers, useCurrentRound, useRecipientForRound, useHasContributed, useContribute, useDisburse, useStartGroup } from "@/hooks/use-haggiaz";
 import { GroupStatus } from "@/lib/enums";
 import { formatAmount, formatAddress } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -18,7 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ANIMATION } from "@/lib/constants";
+import { ROUTES, ANIMATION } from "@/lib/constants";
 
 function useGroupId(): `0x${string}` | undefined {
   const params = useParams();
@@ -29,11 +33,12 @@ function useGroupId(): `0x${string}` | undefined {
 
 export default function GroupDetailPage() {
   const groupId = useGroupId();
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const { writeContract: approveToken } = useWriteContract();
 
   const { data: config, isLoading: configLoading } = useGroupConfig(groupId);
   const { data: status, isLoading: statusLoading } = useGroupStatus(groupId);
+  const { data: members } = useGroupMembers(groupId);
   const { data: currentRound } = useCurrentRound(groupId);
   const { data: recipient } = useRecipientForRound(groupId, currentRound ?? 0);
   const { data: hasContributed } = useHasContributed(groupId, address, currentRound ?? 0);
@@ -42,13 +47,67 @@ export default function GroupDetailPage() {
   const { disburse, isPending: disbursePending } = useDisburse();
   const { start, isPending: startPending } = useStartGroup();
 
+  const upsertGroup = useMutation(api.groups.upsert);
+  const upsertMembership = useMutation(api.memberships.upsert);
+  const membersSyncedRef = useRef(false);
+
+  // Map chain status to Convex status string
+  const statusStr = (n: number | undefined): "open" | "active" | "completed" | "cancelled" => {
+    if (n === GroupStatus.Open) return "open";
+    if (n === GroupStatus.Active) return "active";
+    if (n === GroupStatus.Completed) return "completed";
+    if (n === GroupStatus.Cancelled) return "cancelled";
+    return "open";
+  };
+
+  // Backfill Convex: upsert group from chain (so groups table has correct data)
+  useEffect(() => {
+    if (!groupId || !config || status === undefined || currentRound === undefined || members == null) return;
+    upsertGroup({
+      groupId,
+      name: config.name,
+      creator: config.creator,
+      token: config.token,
+      contributionAmount: config.contributionAmount.toString(),
+      maxMembers: Number(config.maxMembers),
+      roundDurationSeconds: Number(config.roundDurationSeconds ?? 0),
+      status: statusStr(Number(status)),
+      memberCount: members.length,
+      currentRound: Number(currentRound),
+    }).catch(() => {});
+  }, [groupId, config, status, currentRound, members, upsertGroup]);
+
+  // Sync each member to Convex memberships (joinedAt unknown from chain → use 0, hasReceived false)
+  useEffect(() => {
+    if (!groupId || !members?.length || membersSyncedRef.current) return;
+    membersSyncedRef.current = true;
+    members.forEach((memberAddress) => {
+      upsertMembership({
+        groupId,
+        memberAddress,
+        joinedAt: 0,
+        hasReceived: false,
+      }).catch(() => {});
+    });
+  }, [groupId, members, upsertMembership]);
+
   const isLoading = configLoading || statusLoading;
   const isCreator = address && config && config.creator.toLowerCase() === address.toLowerCase();
+  const isMember = address && members?.some((m) => m.toLowerCase() === address.toLowerCase());
   const isRecipient = address && recipient && recipient.toLowerCase() === address.toLowerCase();
   const statusNum = status !== undefined ? Number(status) : undefined;
   const canContribute = statusNum === GroupStatus.Active && !hasContributed && address;
   const canDisburse = statusNum === GroupStatus.Active && isRecipient && hasContributed;
   const canStart = statusNum === GroupStatus.Open && isCreator;
+  const canJoin = statusNum === GroupStatus.Open && isConnected && !isMember && groupId;
+  const showInviteLink = statusNum === GroupStatus.Open && isCreator;
+
+  const copyInviteLink = () => {
+    if (!groupId) return;
+    const url = `${window.location.origin}${ROUTES.JOIN(groupId)}`;
+    void navigator.clipboard.writeText(url);
+    // Could add toast; for now user can see the link
+  };
 
   const handleApprove = () => {
     if (!config) return;
@@ -101,7 +160,7 @@ export default function GroupDetailPage() {
               <div>
                 <CardTitle className="text-2xl">{name || "Unnamed group"}</CardTitle>
                 <CardDescription className="mt-1">
-                  {formatAmount(contributionAmount)} USDm · {Number(maxMembers)} members
+                  {formatAmount(contributionAmount)} USDC · {members?.length ?? 0}/{Number(maxMembers)} members
                 </CardDescription>
               </div>
               <Badge variant={statusNum === GroupStatus.Active ? "default" : "secondary"}>
@@ -117,6 +176,26 @@ export default function GroupDetailPage() {
               <p className="font-mono text-sm">{formatAddress(creator)}</p>
             </div>
 
+            {members && members.length > 0 && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Members</p>
+                <ul className="space-y-1.5">
+                  {members.map((memberAddr) => {
+                    const isYou = address && memberAddr.toLowerCase() === address.toLowerCase();
+                    return (
+                      <li
+                        key={memberAddr}
+                        className={`font-mono text-sm ${isYou ? "text-primary font-medium" : "text-muted-foreground"}`}
+                      >
+                        {formatAddress(memberAddr)}
+                        {isYou && <span className="ml-2 text-xs text-primary">(you)</span>}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+
             {statusNum === GroupStatus.Active && (
               <div>
                 <p className="text-sm text-muted-foreground">Current round</p>
@@ -129,6 +208,24 @@ export default function GroupDetailPage() {
               </div>
             )}
 
+            {canJoin && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <p className="text-sm text-muted-foreground mb-2">You’re not in this group yet.</p>
+                <Link href={ROUTES.JOIN(groupId)}>
+                  <Button className="w-full sm:w-auto">Join group</Button>
+                </Link>
+              </div>
+            )}
+
+            {showInviteLink && (
+              <div className="rounded-lg border border-border bg-muted/30 p-3">
+                <p className="text-sm text-muted-foreground mb-2">Share this link so others can join (group must stay Open).</p>
+                <Button variant="outline" size="sm" onClick={copyInviteLink}>
+                  Copy invite link
+                </Button>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2">
               {canStart && (
                 <Button onClick={() => start(groupId)} disabled={startPending}>
@@ -138,7 +235,7 @@ export default function GroupDetailPage() {
               {canContribute && (
                 <>
                   <Button variant="outline" onClick={handleApprove}>
-                    Approve USDm
+                    Approve USDC
                   </Button>
                   <Button onClick={() => contribute(groupId)} disabled={contributePending}>
                     {contributePending ? "Processing…" : "Contribute"}

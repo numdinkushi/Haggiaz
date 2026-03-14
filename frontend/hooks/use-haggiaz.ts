@@ -80,7 +80,7 @@ export function useGroupExists(groupId: `0x${string}` | undefined) {
 
 export function useCreateGroup() {
   const { writeContract, data: hash, error, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
+  const { data: receipt, isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
   const createGroup = (params: {
     name: string;
@@ -100,12 +100,14 @@ export function useCreateGroup() {
         BigInt(params.maxMembers),
         BigInt(params.roundDurationSeconds),
       ],
+      gas: 400_000n, // cap so wallet doesn't over-estimate; createGroup typically ~250k
     });
   };
 
   return {
     createGroup,
     hash,
+    receipt,
     error,
     isPending: isPending || isConfirming,
     isSuccess,

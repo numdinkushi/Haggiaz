@@ -61,7 +61,7 @@ export default function HomePage() {
           {[
             {
               title: "Create",
-              desc: "Start a group with USDm on Celo. Set contribution and round duration.",
+              desc: "Start a group with USDC on Celo. Set contribution and round duration.",
             },
             {
               title: "Contribute",

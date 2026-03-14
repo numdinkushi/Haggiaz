@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAccount } from "wagmi";
-import { parseUnits } from "viem";
+import { parseUnits, decodeEventLog } from "viem";
+import { useMutation } from "convex/react";
+import { api } from "../../../convex/_generated/api";
+import { HAGGAZ_ABI } from "@/lib/abi/haggiaz";
 import { motion } from "framer-motion";
 import { ROUTES } from "@/lib/constants";
 import { CONFIG } from "@/lib/config";
@@ -17,13 +20,18 @@ import { TOKEN_DECIMALS } from "@/lib/constants";
 
 export default function CreateGroupPage() {
   const router = useRouter();
-  const { isConnected } = useAccount();
-  const { createGroup, isPending, isSuccess, error } = useCreateGroup();
+  const { isConnected, address } = useAccount();
+  const { createGroup, receipt, isPending, isSuccess, error } = useCreateGroup();
+  const upsertGroup = useMutation(api.groups.upsert);
+  const [synced, setSynced] = useState(false);
 
   const [name, setName] = useState("");
   const [contribution, setContribution] = useState("10");
   const [maxMembers, setMaxMembers] = useState("5");
   const [roundDurationDays, setRoundDurationDays] = useState("7");
+  const [lastCreateParams, setLastCreateParams] = useState<{
+    roundDurationSeconds: number;
+  } | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,18 +39,56 @@ export default function CreateGroupPage() {
 
     const contributionAmount = parseUnits(contribution, TOKEN_DECIMALS);
     const roundDurationSeconds = parseInt(roundDurationDays, 10) * 86400;
+    setLastCreateParams({ roundDurationSeconds });
 
     createGroup({
       name: name.trim(),
-      token: CONFIG.usdm,
+      token: CONFIG.usdc,
       contributionAmount,
       maxMembers: parseInt(maxMembers, 10),
       roundDurationSeconds,
     });
   };
 
-  if (isSuccess) {
-    router.push(ROUTES.GROUPS);
+  // When tx confirms, parse GroupCreated and sync to Convex
+  useEffect(() => {
+    if (!receipt || !address || synced) return;
+    const haggiazLower = CONFIG.haggiaz.toLowerCase();
+    const log = receipt.logs.find(
+      (l) => l.address.toLowerCase() === haggiazLower && l.topics.length > 0
+    );
+    if (!log) return;
+    try {
+      const decoded = decodeEventLog({
+        abi: HAGGAZ_ABI,
+        data: log.data,
+        topics: log.topics,
+      });
+      if (decoded.eventName !== "GroupCreated") return;
+      const { groupId, name, creator, token, contributionAmount, maxMembers } = decoded.args;
+      upsertGroup({
+        groupId: groupId as `0x${string}`,
+        name,
+        creator: creator as string,
+        token: token as string,
+        contributionAmount: contributionAmount.toString(),
+        maxMembers: Number(maxMembers),
+        roundDurationSeconds: lastCreateParams?.roundDurationSeconds ?? 0,
+        status: "open",
+        memberCount: 1,
+        currentRound: 0,
+      }).then(() => {
+        setSynced(true);
+        router.push(ROUTES.GROUPS);
+      });
+    } catch {
+      // if decode fails, still redirect
+      setSynced(true);
+      router.push(ROUTES.GROUPS);
+    }
+  }, [receipt, address, synced, lastCreateParams, upsertGroup, router]);
+
+  if (isSuccess && synced) {
     return null;
   }
 
@@ -58,7 +104,7 @@ export default function CreateGroupPage() {
           <CardHeader>
             <CardTitle>Create a group</CardTitle>
             <CardDescription>
-              Start a new ROSCA/Chama savings group on Celo. Members contribute USDm each round.
+              Start a new ROSCA/Chama savings group on Celo. Members contribute USDC each round.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -79,7 +125,7 @@ export default function CreateGroupPage() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="contribution">Contribution per round (USDm)</Label>
+                  <Label htmlFor="contribution">Contribution per round (USDC)</Label>
                   <Input
                     id="contribution"
                     type="number"
